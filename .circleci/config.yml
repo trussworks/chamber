@@ -1,137 +1,161 @@
-version: 2
 jobs:
-  test-install-golang-prev:
-    docker:
-      - image: circleci/golang:1.10
-    working_directory: /go/src/github.com/segmentio/chamber
-    steps:
-      - checkout
-      - run:
-          name: 'Test install golang (previous release)'
-          command: |
-            go get -v . && chamber version
-
-  test-install-golang-current:
-    docker:
-      - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/segmentio/chamber
-    steps:
-      - checkout
-      - run:
-          name: 'Test go get install on current golang release'
-          command: |
-            go get -v . && chamber version
-
-  # only need this job until 1.13 is released
-  test-install-golang-1.11-GOMODULE-on:
-    docker:
-      - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/segmentio/chamber
-    steps:
-      - checkout
-      - run:
-          name: 'Test go get install on golang 1.11 GO111MODULE=on'
-          command: |
-            GO111MODULE=on go get -v . && chamber version
-
-  test:
-    docker:
-      - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/segmentio/chamber
-    steps:
-      - checkout
-      - run:
-          name: Test
-          command: |
-            make test
-
   dist:
     docker:
-      - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/segmentio/chamber
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.11
     steps:
-      - checkout
-      - run:
-          name: Install nfpm, rpmbuild
-          command: |
-            sudo make -f Makefile.tools nfpm-debian rpmbuild-debian
-      - run:
-          name: Make distributables
-          command: |
-            make -f Makefile.release dist
-      - persist_to_workspace:
-          root: .
-          paths: ['dist/*']
+    - checkout
+    - run:
+        command: 'sudo make -f Makefile.tools nfpm-debian rpmbuild-debian
 
-  publish-packagecloud:
-    docker:
-      - image: circleci/golang:1.11
+          '
+        name: Install nfpm, rpmbuild
+    - run:
+        command: 'make -f Makefile.release dist
+
+          '
+        name: Make distributables
+    - persist_to_workspace:
+        paths:
+        - dist/*
+        root: .
     working_directory: /go/src/github.com/segmentio/chamber
-    steps:
-      - checkout
-      - attach_workspace: { at: . }
-      - run:
-          name: Install tools
-          command: |
-            # this is all for package_cloud :/
-            sudo apt update -q 
-            sudo apt install -yq ruby ruby-dev build-essential
-            # fixes https://askubuntu.com/questions/872399/error-failed-to-build-gem-native-extension-when-trying-to-download-rubocop
-            sudo gem install rake
-            sudo make -f Makefile.tools package_cloud
-      - run:
-          name: Release
-          command: |
-            make -f Makefile.release publish-packagecloud
-
   publish-github:
     docker:
-      - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/segmentio/chamber
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.11
     steps:
-      - checkout
-      - attach_workspace: { at: . }
-      - run:
-          name: Install tools
-          command: |
-            make -f Makefile.tools github-release
-      - run:
-          name: Release
-          command: |
-            make -f Makefile.release publish-github
+    - checkout
+    - attach_workspace:
+        at: .
+    - run:
+        command: 'make -f Makefile.tools github-release
 
+          '
+        name: Install tools
+    - run:
+        command: 'make -f Makefile.release publish-github
+
+          '
+        name: Release
+    working_directory: /go/src/github.com/segmentio/chamber
+  publish-packagecloud:
+    docker:
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.11
+    steps:
+    - checkout
+    - attach_workspace:
+        at: .
+    - run:
+        command: "# this is all for package_cloud :/\nsudo apt update -q \nsudo apt\
+          \ install -yq ruby ruby-dev build-essential\n# fixes https://askubuntu.com/questions/872399/error-failed-to-build-gem-native-extension-when-trying-to-download-rubocop\n\
+          sudo gem install rake\nsudo make -f Makefile.tools package_cloud\n"
+        name: Install tools
+    - run:
+        command: 'make -f Makefile.release publish-packagecloud
+
+          '
+        name: Release
+    working_directory: /go/src/github.com/segmentio/chamber
+  test:
+    docker:
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.11
+    steps:
+    - checkout
+    - run:
+        command: 'make test
+
+          '
+        name: Test
+    working_directory: /go/src/github.com/segmentio/chamber
+  test-install-golang-1.11-GOMODULE-on:
+    docker:
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.11
+    steps:
+    - checkout
+    - run:
+        command: 'GO111MODULE=on go get -v . && chamber version
+
+          '
+        name: Test go get install on golang 1.11 GO111MODULE=on
+    working_directory: /go/src/github.com/segmentio/chamber
+  test-install-golang-current:
+    docker:
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.11
+    steps:
+    - checkout
+    - run:
+        command: 'go get -v . && chamber version
+
+          '
+        name: Test go get install on current golang release
+    working_directory: /go/src/github.com/segmentio/chamber
+  test-install-golang-prev:
+    docker:
+    - auth:
+        password: $DOCKER_PASSWORD
+        username: $DOCKER_USERNAME
+      image: circleci/golang:1.10
+    steps:
+    - checkout
+    - run:
+        command: 'go get -v . && chamber version
+
+          '
+        name: Test install golang (previous release)
+    working_directory: /go/src/github.com/segmentio/chamber
+version: 2
 workflows:
-  version: 2
   test-dist-publish:
     jobs:
-      - test
-      - test-install-golang-prev
-      - test-install-golang-current
-      - test-install-golang-1.11-GOMODULE-on
-      - dist:
-          # needed to ensure dist happens on tag events
-          filters:
-            tags:
-              only: /.*/
-      - publish-packagecloud:
-          context: packagecloud
-          requires:
-            - dist
-          filters:
-            # never publish from a branch event
-            branches:
-              ignore: /.*/
-            # release only on tag push events like vX[.Y.Z...][-whatever]
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*(-[a-zA-Z0-9-]+)?/
-      - publish-github:
-          context: github-segmentcircle-oss-release
-          requires:
-            - dist
-          filters:
-            # never publish from a branch event
-            branches:
-              ignore: /.*/
-            # release only on tag push events like vX[.Y.Z...][-whatever]
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*(-[a-zA-Z0-9-]+)?/
+    - test:
+        context:
+        - org-global
+    - test-install-golang-prev:
+        context:
+        - org-global
+    - test-install-golang-current:
+        context:
+        - org-global
+    - test-install-golang-1.11-GOMODULE-on:
+        context:
+        - org-global
+    - dist:
+        filters:
+          tags:
+            only: /.*/
+    - publish-packagecloud:
+        context: packagecloud
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /v[0-9]+(\.[0-9]+)*(-[a-zA-Z0-9-]+)?/
+        requires:
+        - dist
+    - publish-github:
+        context: github-segmentcircle-oss-release
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /v[0-9]+(\.[0-9]+)*(-[a-zA-Z0-9-]+)?/
+        requires:
+        - dist
+  version: 2
